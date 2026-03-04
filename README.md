@@ -2,6 +2,8 @@
 
 A personal AI assistant designed for students to fork, customize, and develop throughout their coursework. Built with modern web technologies and compatible with Continue/Cursor MCP tools.
 
+**🚀 Live Demo**: https://inquiryinstitute.github.io/PersonAI
+
 ## 🎓 For Students
 
 This repository serves as the base for **Assignment 0** in the Sovereign AI Certificate program. Each student will fork this repo through GitHub Classroom and develop their own PersonAI throughout the semester.
