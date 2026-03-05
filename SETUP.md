@@ -243,8 +243,8 @@ code --update-extensions inquiryinstitute.personai
 
 ## 📞 Support
 
-- **Issues**: https://github.com/InquiryInstitute/personAI/issues
-- **Discussions**: https://github.com/InquiryInstitute/personAI/discussions
+- **Issues**: https://github.com/InquiryInstitute/PersonAI/issues
+- **Discussions**: https://github.com/InquiryInstitute/PersonAI/discussions
 - **Email**: support@inquiryinstitute.org
 - **Office Hours**: See course website
 

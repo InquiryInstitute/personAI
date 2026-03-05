@@ -142,7 +142,7 @@ git push
 - Check the [README.md](README.md) for more details
 - Post questions in the class discussion forum
 - Attend office hours
-- Check the [GitHub Issues](https://github.com/InquiryInstitute/personAI/issues)
+- Check the [GitHub Issues](https://github.com/InquiryInstitute/PersonAI/issues)
 
 ## Next Steps
 

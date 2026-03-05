@@ -183,7 +183,7 @@
 			PersonAI v0.2.0
 		</p>
 		<p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
-			<a href="https://github.com/InquiryInstitute/personAI" target="_blank" class="hover:text-primary-600">
+			<a href="https://github.com/InquiryInstitute/PersonAI" target="_blank" class="hover:text-primary-600">
 				GitHub
 			</a>
 		</p>

@@ -2,7 +2,7 @@
 
 A personal AI assistant designed for students to fork, customize, and develop throughout their coursework. Built with modern web technologies and compatible with Continue/Cursor MCP tools.
 
-**🚀 Live Demo**: https://inquiryinstitute.github.io/PersonAI
+**🚀 Deploy Your Own**: Fork this repo and enable GitHub Pages to get your own live demo at `https://yourusername.github.io/personAI/`
 
 ## 🎓 For Students
 
@@ -165,10 +165,12 @@ Add new connectors in the `connectors/` directory following the existing pattern
 
 PersonAI automatically deploys to GitHub Pages when you push to main:
 
-1. Enable GitHub Pages in repository settings
+1. Enable GitHub Pages in repository settings (Settings → Pages)
 2. Source: GitHub Actions
 3. Push to main branch
-4. Visit: `https://yourusername.github.io/personAI/`
+4. Your site will be live at: `https://yourusername.github.io/personAI/`
+
+Note: The URL is case-sensitive and uses the repository name exactly as it appears.
 
 ### Local Development
 

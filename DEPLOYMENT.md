@@ -145,12 +145,12 @@ Students should:
 
 ### Check Deployment Status
 ```bash
-gh run list --repo InquiryInstitute/personAI --workflow="deploy.yml" --limit 1
+gh run list --repo InquiryInstitute/PersonAI --workflow="deploy.yml" --limit 1
 ```
 
 ### View Logs
 ```bash
-gh run view <run-id> --repo InquiryInstitute/personAI --log
+gh run view <run-id> --repo InquiryInstitute/PersonAI --log
 ```
 
 ### Re-deploy

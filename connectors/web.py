@@ -15,7 +15,7 @@ class WebConnector:
     
     def __init__(self):
         self.headers = {
-            'User-Agent': 'Mozilla/5.0 (compatible; personAI/0.1; +https://github.com/InquiryInstitute/personAI)'
+            'User-Agent': 'Mozilla/5.0 (compatible; PersonAI/0.1; +https://github.com/InquiryInstitute/PersonAI)'
         }
     
     async def search(self, query: str, num_results: int = 5) -> List[Dict[str, str]]:
