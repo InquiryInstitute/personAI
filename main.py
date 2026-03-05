@@ -2,13 +2,15 @@
 personAI - Personal AI Assistant
 Main application entry point
 """
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse, RedirectResponse
 from pydantic import BaseModel
 import os
 from dotenv import load_dotenv
 from typing import Optional, List
+import httpx
+import secrets
 from finetuning import FineTuningEngine, FineTuningConfig
 from connectors.mcp import create_default_mcp_manager
 from connectors.llm import create_llm
@@ -26,6 +28,14 @@ mcp_manager = create_default_mcp_manager()
 
 # Initialize LLM
 llm = create_llm()
+
+# GitHub OAuth configuration
+GITHUB_CLIENT_ID = os.getenv("GITHUB_CLIENT_ID")
+GITHUB_CLIENT_SECRET = os.getenv("GITHUB_CLIENT_SECRET")
+FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
+
+# Store OAuth states temporarily (in production, use Redis or similar)
+oauth_states = {}
 
 # CORS middleware
 app.add_middleware(
@@ -62,6 +72,164 @@ async def root():
         "version": "0.2.0",
         "finetuning_enabled": finetuning_config.enabled
     }
+
+
+@app.get("/health")
+async def health():
+    """Detailed health check"""
+    return {
+        "status": "healthy",
+        "read_only_mode": os.getenv("READ_ONLY_MODE", "true").lower() == "true",
+        "available_sources": ["github", "drive", "web"],
+        "github_oauth_enabled": bool(GITHUB_CLIENT_ID and GITHUB_CLIENT_SECRET),
+        "finetuning": {
+            "enabled": finetuning_config.enabled,
+            "auto": finetuning_config.auto_tune,
+            "backend": finetuning_config.backend,
+            "require_approval": finetuning_config.require_approval
+        }
+    }
+
+
+@app.get("/auth/github/device/start")
+async def github_device_start():
+    """Start GitHub Device Flow"""
+    if not GITHUB_CLIENT_ID:
+        raise HTTPException(status_code=500, detail="GitHub OAuth not configured")
+    
+    async with httpx.AsyncClient() as client:
+        response = await client.post(
+            "https://github.com/login/device/code",
+            headers={"Accept": "application/json"},
+            data={"client_id": GITHUB_CLIENT_ID, "scope": "repo read:user user:email"}
+        )
+        
+        if response.status_code != 200:
+            raise HTTPException(status_code=500, detail="Failed to start device flow")
+        
+        return response.json()
+
+
+@app.post("/auth/github/device/poll")
+async def github_device_poll(device_code: str):
+    """Poll for device flow completion"""
+    if not GITHUB_CLIENT_ID or not GITHUB_CLIENT_SECRET:
+        raise HTTPException(status_code=500, detail="GitHub OAuth not configured")
+    
+    async with httpx.AsyncClient() as client:
+        response = await client.post(
+            "https://github.com/login/oauth/access_token",
+            headers={"Accept": "application/json"},
+            data={
+                "client_id": GITHUB_CLIENT_ID,
+                "device_code": device_code,
+                "grant_type": "urn:ietf:params:oauth:grant-type:device_code"
+            }
+        )
+        
+        data = response.json()
+        
+        # Return the response as-is (includes error codes like authorization_pending)
+        if "access_token" in data:
+            # Get user info
+            user_response = await client.get(
+                "https://api.github.com/user",
+                headers={
+                    "Authorization": f"Bearer {data['access_token']}",
+                    "Accept": "application/json"
+                }
+            )
+            user_data = user_response.json()
+            data["user"] = user_data
+        
+        return data
+
+
+@app.get("/auth/github")
+async def github_auth():
+    """Initiate GitHub OAuth flow"""
+    if not GITHUB_CLIENT_ID:
+        raise HTTPException(status_code=500, detail="GitHub OAuth not configured")
+    
+    # Generate random state for CSRF protection
+    state = secrets.token_urlsafe(32)
+    oauth_states[state] = True
+    
+    # Redirect to GitHub OAuth
+    github_auth_url = (
+        f"https://github.com/login/oauth/authorize"
+        f"?client_id={GITHUB_CLIENT_ID}"
+        f"&scope=repo,read:user,user:email"
+        f"&state={state}"
+    )
+    
+    return {"auth_url": github_auth_url, "state": state}
+
+
+@app.get("/auth/github/callback")
+async def github_callback(code: str, state: str):
+    """Handle GitHub OAuth callback"""
+    if not GITHUB_CLIENT_ID or not GITHUB_CLIENT_SECRET:
+        raise HTTPException(status_code=500, detail="GitHub OAuth not configured")
+    
+    # Verify state
+    if state not in oauth_states:
+        raise HTTPException(status_code=400, detail="Invalid state parameter")
+    
+    # Remove used state
+    del oauth_states[state]
+    
+    # Exchange code for access token
+    async with httpx.AsyncClient() as client:
+        token_response = await client.post(
+            "https://github.com/login/oauth/access_token",
+            headers={"Accept": "application/json"},
+            data={
+                "client_id": GITHUB_CLIENT_ID,
+                "client_secret": GITHUB_CLIENT_SECRET,
+                "code": code,
+            }
+        )
+        
+        token_data = token_response.json()
+        
+        if "error" in token_data:
+            raise HTTPException(status_code=400, detail=token_data.get("error_description", "OAuth failed"))
+        
+        access_token = token_data.get("access_token")
+        
+        # Get user info
+        user_response = await client.get(
+            "https://api.github.com/user",
+            headers={
+                "Authorization": f"Bearer {access_token}",
+                "Accept": "application/json"
+            }
+        )
+        
+        user_data = user_response.json()
+        
+        # Redirect back to frontend with token
+        redirect_url = f"{FRONTEND_URL}?token={access_token}&user={user_data.get('login')}&name={user_data.get('name', '')}"
+        return RedirectResponse(url=redirect_url)
+
+
+@app.get("/auth/github/user")
+async def get_github_user(token: str):
+    """Get GitHub user info from token"""
+    async with httpx.AsyncClient() as client:
+        response = await client.get(
+            "https://api.github.com/user",
+            headers={
+                "Authorization": f"Bearer {token}",
+                "Accept": "application/json"
+            }
+        )
+        
+        if response.status_code != 200:
+            raise HTTPException(status_code=401, detail="Invalid token")
+        
+        return response.json()
 
 
 @app.get("/health")
